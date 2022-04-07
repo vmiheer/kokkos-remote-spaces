@@ -476,9 +476,11 @@ inline void deep_copy(
 
   Kokkos::fence("Kokkos::deep_copy: scalar to scalar copy, pre copy fence");
 
-  DefaultRemoteMemorySpace().fence();
+  Kokkos::fence();
+  //DefaultRemoteMemorySpace().fence();
 
   if (dst.data() != src.data()) {
+    printf("XXXXXYYY");
     Kokkos::Impl::DeepCopy<dst_memory_space, src_memory_space>(
         dst.data(), src.data(), sizeof(value_type));
     Kokkos::fence("Kokkos::deep_copy: scalar to scalar copy, post copy fence");
@@ -685,6 +687,7 @@ inline void deep_copy(
 
     DefaultRemoteMemorySpace().fence();
 
+  printf("XXXXXXX\n");
     if ((void *)dst.data() != (void *)src.data()) {
       Kokkos::Impl::DeepCopy<dst_memory_space, src_memory_space>(
           dst.data(), src.data(), nbytes);
@@ -699,6 +702,8 @@ inline void deep_copy(
         "Kokkos::deep_copy: copy between contiguous views, pre copy fence");
 
     DefaultRemoteMemorySpace().fence();
+
+    printf("INTERNAL DEEP COPY\n");
 
     Impl::view_copy_(dst, src);
     Kokkos::fence(
@@ -750,6 +755,8 @@ inline void deep_copy(
         Kokkos::Profiling::make_space_handle(src_memory_space::name()),
         src.label(), src.data(), dst.span() * sizeof(dst_value_type));
   }
+
+  printf("XXXXXXX\n");
 
   dst_value_type *dst_start = dst.data();
   dst_value_type *dst_end = dst.data() + dst.span();
@@ -895,10 +902,14 @@ inline void deep_copy(
     if ((void *)dst.data() != (void *)src.data()) {
 
       DefaultRemoteMemorySpace().fence();
+      Kokkos::fence();
 
       Kokkos::Impl::DeepCopy<dst_memory_space, src_memory_space, ExecSpace>(
           exec_space, dst.data(), src.data(), nbytes);
 
+      printf("XXXX\n");
+
+      Kokkos::fence();
       DefaultRemoteMemorySpace().fence();
     }
   } else {
@@ -914,14 +925,17 @@ inline void deep_copy(
           "Kokkos::deep_copy: view-to-view noncontiguous copy on space, pre "
           "copy");
 
-      DefaultRemoteMemorySpace().fence();
+printf("XXXX2\n");
+      Kokkos::fence();
+      //DefaultRemoteMemorySpace().fence();
 
       Impl::view_copy(cpy_exec_space(), dst, src);
       cpy_exec_space().fence(
           "Kokkos::deep_copy: view-to-view noncontiguous copy on space, post "
           "copy");
 
-      DefaultRemoteMemorySpace().fence();
+      //DefaultRemoteMemorySpace().fence();
+      Kokkos::fence();
 
     } else {
       Kokkos::Impl::throw_runtime_exception(

@@ -156,7 +156,8 @@ void remote_parallel_for(const std::string &name, Policy &&policy,
   debug_2("Launch workers\n");
   Kokkos::parallel_for(name, worker_policy, worker);
 
-  exec_space().fence(); // CudaDeviceSync
+  Kokkos::fence();
+  /*Dis seems not working*/exec_space().fence(); // CudaDeviceSync
   debug_2("Workers finished\n");
 
   auto respond_policy =
@@ -170,7 +171,8 @@ void remote_parallel_for(const std::string &name, Policy &&policy,
   // Fence the Engine (cache invalidate, MPI barrier, epoch++)
   view.impl_map().fence(exec_space{});
 
-  remote_space().fence(); // MPI barier
+  remote_space().fence(); // Kokkos::fence() + MPI barier
+  //printf("FINAL kernel dispatched.\n");
 
   // Notify final kernel to finish response packing as we guarantee that no
   // remote kernels will be requesting local data
@@ -178,6 +180,7 @@ void remote_parallel_for(const std::string &name, Policy &&policy,
   view.impl_map().clear_fence(exec_space{});
 
   // Wait for packing kernel to finish
+  Kokkos::fence();
   exec_space().fence(); // CudaDeviceSync.
   debug_2("Respond worker finished\n");
 }

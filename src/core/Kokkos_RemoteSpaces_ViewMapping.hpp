@@ -1297,7 +1297,6 @@ template <class... P, typename T = Traits>
     //Notify final pack_response_kernel to stop
     volatile_store(m_handle.e->sge->fence_done_flag, 1u);
   }
-
 };
 
 template <class DstTraits, class SrcTraits>

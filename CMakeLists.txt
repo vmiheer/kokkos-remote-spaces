@@ -56,6 +56,9 @@ if (Kokkos_ENABLE_NVSHMEMSPACE)
     set(ENABLE_ACCESS_CACHING_AND_AGGREGATION GLOBAL)
     message(STATUS "Enabling view caching and aggregation. ")
   endif()
+  # NVSHMEM > v2.5 requires -lnvidia-ml 
+  SET(CUSTOM_LIBS  "-lnvidia-ml")
+
 endif()
 if (Kokkos_ENABLE_SHMEMSPACE)
   message(STATUS "Configuring for SHMEMSPACE.")
@@ -110,7 +113,7 @@ endforeach()
 
 add_library(kokkosremote ${SOURCES} ${HEADERS})
 add_library(Kokkos::kokkosremote ALIAS kokkosremote)
-target_link_libraries(kokkosremote PUBLIC Kokkos::kokkos)
+target_link_libraries(kokkosremote PUBLIC Kokkos::kokkos ${CUSTOM_LIBS})
 
 foreach(DIR ${SOURCE_DIRS})
   target_include_directories(kokkosremote PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${DIR}>)
@@ -125,6 +128,7 @@ target_include_directories(kokkosremote PUBLIC $<INSTALL_INTERFACE:include>)
 
 if(Kokkos_ENABLE_DEBUG)
   target_compile_definitions(kokkosremote PUBLIC KOKKOS_IBV_DEBUG)
+  message(STATUS "Building with DEBUG=ON")
 endif()
 
 if (PRIVATE_DEPS)
