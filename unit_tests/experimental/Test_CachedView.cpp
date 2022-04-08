@@ -122,11 +122,12 @@ template <class Data_t> void test_cached_view1D(int dim0, int league_size, int t
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team,block),
         [&] (const size_t i) {
         size_t index = next_rank * size_per_rank + start + i;             
-        v_d_out_1(start+i) = v_r(index);    
-        v_d_out_2(start+i) = v_r(index);    
-        v_d_out_3(start+i) = v_r(index);  
-        size_t num = v_r(index);
-        //printf("Remote idx:%li, local idx:%li, data:%li\n", index, start+i, num);   
+        //v_d_out_1(start+i) = v_r(index);    
+       /* v_d_out_2(start+i) = v_r(index);    
+        v_d_out_3(start+i) = v_r(index);  */
+        size_t num = (size_t) v_r(index);
+        printf("Remote idx:%li, local idx:%li, data:%li\n", index, start+i, num); 
+        assert( index == num );  
       
       });
     }, v_r);
@@ -134,20 +135,19 @@ template <class Data_t> void test_cached_view1D(int dim0, int league_size, int t
   Kokkos::fence();
   RemoteSpace_t().fence();
 
-
   printf("Deep Copy here: %li\n",v_r.extent(0) );
-
+/*
   Kokkos::deep_copy(v_h, v_d_out_1);
-  for (int i = 0; i < size_per_rank; ++i)
-    ASSERT_EQ(v_h(i), next_rank * size_per_rank + i);
-
+  for (size_t i = 0; i < size_per_rank; ++i)
+    ASSERT_EQ(v_h(i), next_rank * size_per_rank + i);*/
+/*
   Kokkos::deep_copy(v_h, v_d_out_2);
-  for (int i = 0; i <size_per_rank; ++i)
-    ASSERT_EQ(v_h(i), next_rank * size_per_rank + i);
-
+  for (size_t i = 0; i <size_per_rank; ++i)
+    ASSERT_EQ(v_h(i), next_rank * size_per_rank + i);*/
+/*
   Kokkos::deep_copy(v_h, v_d_out_3);
-  for (int i = 0; i < size_per_rank; ++i)
-    ASSERT_EQ(v_h(i), next_rank * size_per_rank + i);
+  for (size_t i = 0; i < size_per_rank; ++i)
+    ASSERT_EQ(v_h(i), next_rank * size_per_rank + i);*/
 }
 
 TEST(TEST_CATEGORY, test_cached_view) {
