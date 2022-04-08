@@ -131,7 +131,9 @@ template <class Policy, class Lambda, class RemoteView>
 void remote_parallel_for(const std::string &name, Policy &&policy,
                          Lambda &&lambda, const RemoteView &view) {
 
-  if (policy.league_size() == 0) {
+  // We need at least >2 teams in order to support helper kernels on seperate
+  // teams
+  if (policy.league_size() <= 2) {
     return;
   }
 
@@ -157,7 +159,7 @@ void remote_parallel_for(const std::string &name, Policy &&policy,
   Kokkos::parallel_for(name, worker_policy, worker);
 
   Kokkos::fence();
-  /*Dis seems not working*/exec_space().fence(); // CudaDeviceSync
+  /*Dis seems not working*/ exec_space().fence(); // CudaDeviceSync
   debug_2("Workers finished\n");
 
   auto respond_policy =
@@ -171,8 +173,8 @@ void remote_parallel_for(const std::string &name, Policy &&policy,
   // Fence the Engine (cache invalidate, MPI barrier, epoch++)
   view.impl_map().fence(exec_space{});
 
-  remote_space().fence(); // Kokkos::fence() + MPI barier
-  //printf("FINAL kernel dispatched.\n");
+  remote_space().fence(); // MPI barier
+  // printf("FINAL kernel dispatched.\n");
 
   // Notify final kernel to finish response packing as we guarantee that no
   // remote kernels will be requesting local data
