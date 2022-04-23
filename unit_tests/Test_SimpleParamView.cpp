@@ -89,21 +89,32 @@ template <class Data_t> void test_simple_view1D(int dim0, int league_size, int t
   int num_teams = league_size;
   int team_size = team_s;
   int thread_vector_length = 1;
-  int next_rank = (myRank + 1) % numRanks;
+  int nextRank = (myRank + 1) % numRanks;
 
   // Uniformly distributed as per documentation. 
   // Note: Adding dim0 mod numRanks to the last rank would be an error (segfault)
   // Note: if dim0 < numRanks, the kernels will perform 0 work
-  size_t size_per_rank = dim0 / numRanks;
-  size_t size_per_team = size_per_rank / num_teams;
-  size_t size_per_team_mod = size_per_rank % num_teams;
+
+
+  auto local_range =
+      Kokkos::Experimental::get_range(dim0,myRank);
+   auto remote_range =
+      Kokkos::Experimental::get_range(dim0,nextRank);
+
+  auto size_local_rank = local_range.second - local_range.first + 1;
+  auto size_next_rank = remote_range.second - remote_range.first + 1;
+
+  size_t size_per_team = size_next_rank / num_teams;
+  size_t size_per_team_mod = size_next_rank % num_teams;
      
   auto policy = Kokkos::TeamPolicy<>
        (num_teams, team_size, thread_vector_length);
   using team_t = Kokkos::TeamPolicy<>::member_type;
 
- Kokkos::parallel_for("Init", size_per_rank, KOKKOS_LAMBDA(const int i){
-   v_d(i) = myRank * size_per_rank + i;
+ Kokkos::parallel_for("Init", size_local_rank, KOKKOS_LAMBDA(const int i){
+   size_t actual_size = (myRank == numRanks -1) ? size_next_rank : size_local_rank;
+   v_d(i) = myRank * actual_size + i;
+   printf("%i, %f\n", i, (double)myRank * actual_size + i);
   });
 
   Kokkos::fence(); 
@@ -116,9 +127,11 @@ template <class Data_t> void test_simple_view1D(int dim0, int league_size, int t
     size_t block = team.league_rank() == team.league_size()-1 ? 
                                    size_per_team + size_per_team_mod : size_per_team;
 
+    size_t actual_size = (myRank == numRanks -1) ? size_next_rank : size_local_rank;
+
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team,block),
         [&] (const size_t i) {
-        size_t index = next_rank * size_per_rank + start + i;             
+        size_t index = nextRank * actual_size + start + i;             
         v_d_out_1(start+i) = v_r(index);    
         v_d_out_2(start+i) = v_r(index);    
         v_d_out_3(start+i) = v_r(index);  
@@ -128,17 +141,19 @@ template <class Data_t> void test_simple_view1D(int dim0, int league_size, int t
   Kokkos::fence();
   RemoteSpace_t().fence();
 
+  size_t actual_size = (myRank == numRanks -1) ? size_next_rank : size_local_rank;
+
   Kokkos::deep_copy(v_h, v_d_out_1);
-  for (int i = 0; i < size_per_rank; ++i)
-    ASSERT_EQ(v_h(i), next_rank * size_per_rank + i);
+  for (int i = 0; i < size_next_rank; ++i)
+    ASSERT_EQ(v_h(i), nextRank * actual_size + i);
 
   Kokkos::deep_copy(v_h, v_d_out_2);
-  for (int i = 0; i <size_per_rank; ++i)
-    ASSERT_EQ(v_h(i), next_rank * size_per_rank + i);
+  for (int i = 0; i <size_next_rank; ++i)
+    ASSERT_EQ(v_h(i), nextRank * actual_size + i);
 
   Kokkos::deep_copy(v_h, v_d_out_3);
-  for (int i = 0; i < size_per_rank; ++i)
-    ASSERT_EQ(v_h(i), next_rank * size_per_rank + i);
+  for (int i = 0; i < size_next_rank; ++i)
+    ASSERT_EQ(v_h(i), nextRank * actual_size + i);
 }
 
 TEST(TEST_CATEGORY, test_simple_view) {

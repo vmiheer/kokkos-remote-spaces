@@ -47,6 +47,8 @@
 
 #include <RDMA_Worker.hpp>
 
+#define RAW_CUDA
+
 namespace Kokkos {
 namespace Experimental {
 namespace RACERlib {
@@ -81,12 +83,25 @@ template <class Policy, class Lambda, class RemoteView> struct Worker {
   operator()(const typename Policy::member_type &team) const {
     RdmaScatterGatherWorker<double> *sgw = m_view(0).sgw;
     if (team.league_rank() == 0) {
-      debug_2("Starting kernel 2 (aggregate_requests_kernel)\n");
+     // debug_2("Starting kernel 2 (aggregate_requests_kernel)\n");
+     // aggregate_requests_kernel(sgw, team, team.league_size() - 2);
+
+             Kokkos::single(
+          Kokkos::PerTeam(team), KOKKOS_LAMBDA() {
+    debug_2("Starting kernel 2 (aggregate_requests_kernel)\n");
       aggregate_requests_kernel(sgw, team, team.league_size() - 2);
+          });
     } else if (team.league_rank() == 1) {
       debug_2("Starting kernel 1 (pack_response_kernel)\n");
-      pack_response_kernel(m_view(0).ptr, sgw, sgw->response_done_flag, team,
+       Kokkos::single(
+          Kokkos::PerTeam(team), KOKKOS_LAMBDA() {
+                debug_2("Starting kernel 1 (pack_response_kernel)\n");
+              pack_response_kernel(m_view(0).ptr, sgw, sgw->response_done_flag, team,
                            false);
+          });
+
+    /*  pack_response_kernel(m_view(0).ptr, sgw, sgw->response_done_flag, team,
+                           false);*/
     } else {
       debug_2("Starting kernel 3 (user)\n");
       auto new_team = team.shrink_league(2);

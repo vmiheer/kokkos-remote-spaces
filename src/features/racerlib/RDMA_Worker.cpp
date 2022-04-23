@@ -91,7 +91,7 @@ KOKKOS_FUNCTION T RdmaScatterGatherWorker<T>::get(int pe, uint32_t offset) {
   uint64_t *ack_ptr = &ack_ctrs_d[pe];
   uint64_t ack = volatile_load(ack_ptr);
   while (ack <= idx) {
-    ack = volatile_load(ack_ptr);
+    ack = volatile_load(ack_ptr); 
   }
 
   // at this point, our data is now available in the reply buffer

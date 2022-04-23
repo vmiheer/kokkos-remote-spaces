@@ -96,16 +96,22 @@ pack_response_kernel(T *local_values, RdmaScatterGatherWorker<T> *sgw,
 
       uint32_t num_packed = 0;
 
+      //printf("PACK RESPONSE 0: THREAD ID %u, total threads: %u\n", my_thread, total_threads);
+
       while (num_packed < num_requests) {
         uint32_t my_index = num_packed + my_thread;
+        //printf("PACK RESPONSE 1: IDX ID %u\n", my_index);
         if (my_index < num_requests) {
           // This needs to be volatile to force visibility from the IB send
           uint32_t offset =
               GET_ELEMENT_OFFSET(volatile_load(&offsets[my_index]));
+              printf("PACK RESPONSE: idx: %i, offset: %i, num_req: %i, win: %i, qsize: %i, thread: %i, value: %f \n", 
+              my_index, offset, num_requests, window,queue_size, my_thread, local_values[offset]);
           reply_tx_buffer_T[my_index] = local_values[offset];
         }
-        num_packed += total_threads;
+        num_packed += /*total_threads*/1;
       }
+      //printf("PACK RESPONSE DONE\n");
       if (my_thread == 0) {
         ++sgw->rx_block_request_ctr;
         sgw->tx_element_reply_ctrs[pe] += num_requests;
@@ -169,6 +175,7 @@ __device__ void aggregate_requests_kernel(RdmaScatterGatherWorker<T> *sgw,
         uint64_t max_index =
             Kokkos::atomic_fetch_add(&sgw->tx_element_request_ctrs[pe], 0u);
         total_requests = max_index - head;
+      //  printf("PACK REQUEST: total_requests: %lu, %lu\n",total_requests, head);
         if (total_requests < mtu && misses[pe] < max_mtu_stalls) {
           total_requests = 0;
           ++misses[pe];
@@ -178,12 +185,14 @@ __device__ void aggregate_requests_kernel(RdmaScatterGatherWorker<T> *sgw,
       }
 
       __syncthreads();
-
+    
       if (total_requests > 0) {
+
+        /*
         unsigned requests_done = 0;
         while (requests_done < total_requests) {
-          uint64_t my_offset = head + requests_done + my_thread;
-          if (my_offset < total_requests) {
+          uint64_t my_offset = head + requests_done + my_thread; 
+          if (my_offset < total_requests) { 
             uint64_t my_idx = my_offset % queue_size;
             uint64_t my_trip_number = my_offset / queue_size;
             uint32_t ready_flag = MAKE_READY_FLAG(my_trip_number);
@@ -196,10 +205,11 @@ __device__ void aggregate_requests_kernel(RdmaScatterGatherWorker<T> *sgw,
             }
             // This looks stupid, but is necessary to make visible to peer
             // devices
-            sgw->tx_element_request_queue[req_slot] = next_request;
+            //sgw->tx_element_request_queue[req_slot] = next_request;
+            printf("PACK REQUEST: idx:%u, slot: %u, total_req: %u, thread: %i\n", next_request, req_slot, total_requests, my_thread);
           }
           requests_done += total_threads;
-        }
+        }*/
 
         // We have written the requests, now make them peer visible
         __threadfence_system();
@@ -287,7 +297,7 @@ KOKKOS_FUNCTION void aggregate_requests_kernel(RdmaScatterGatherWorker<T> *sgw,
       });
       team.team_barrier();
       if (total_requests > 0) {
-        auto vec_length = 1; // team.vector_length();
+        auto vec_length = team.vector_length();
         uint64_t num_passes = total_requests / vec_length;
         if (total_requests % vec_length)
           num_passes++;
@@ -373,7 +383,7 @@ pack_response_kernel(T *local_values, RdmaScatterGatherWorker<T> *sgw,
       uint32_t *offsets = sgw->rx_element_request_queue + window * queue_size;
       T *reply_tx_buffer_T = ((T *)sgw->tx_element_reply_queue) + reply_offset;
 
-      auto vec_length = 1; // team.vector_length();
+      auto vec_length = team.vector_length();
       uint64_t num_passes = num_requests / vec_length;
       if (num_requests % vec_length)
         num_passes++;

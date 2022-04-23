@@ -120,18 +120,18 @@
     }                                                                          \
   } while (0)
 
-#define debugf(str, ...)                                                       \
-  assert(request_tport != NULL);                                               \
-  printf("PE %d: " str "\n", request_tport->my_rank, __VA_ARGS__);             \
-  fflush(stdout)
-
-#define debugf_2(str) printf(str "\n");
+#define debugf(str,...) \
+printf( str "\n", __VA_ARGS__); \
+fflush(stdout)
 
 #ifdef KOKKOS_IBV_DEBUG
-#define debug(...)
+#define debug(...) debugf(__VA_ARGS__)
 #else
 #define debug(...)
 #endif
+
+#define debugf_2(str) \
+printf(str "\n");
 
 #ifdef KOKKOS_IBV_DEBUG
 #define debug_2(...) debugf_2(__VA_ARGS__)

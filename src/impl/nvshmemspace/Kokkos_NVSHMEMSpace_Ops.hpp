@@ -921,10 +921,13 @@ struct NVSHMEMDataElement<
       void *shm_ptr = sgw->direct_ptrs[pe];
       if (shm_ptr) {
         T *t = (T *)shm_ptr;
+        printf("FUNKY\n");
         return volatile_load(&t[offset]);
       }
+      printf("Requesting from pe: %i, offset: %i\n", pe, offset);
       return sgw->request(pe, offset);
     } else {
+      printf("XXX: %u, %f, %i, %i\n", offset, ptr[offset], sgw->my_rank, pe);
       return ptr[offset];
     }
   }
