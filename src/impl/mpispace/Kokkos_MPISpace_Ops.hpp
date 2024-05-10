@@ -21,6 +21,8 @@
 
 #include <type_traits>
 
+#pragma push_macro("KOKKOS_INLINE_FUNCTION")
+#define KOKKOS_INLINE_FUNCTION
 namespace Kokkos {
 namespace Impl {
 
@@ -815,4 +817,5 @@ struct MPIDataElement<
 }  // namespace Impl
 }  // namespace Kokkos
 
+#pragma pop_macro("KOKKOS_INLINE_FUNCTION")
 #endif  // KOKKOS_REMOTESPACES_MPI_OPS_HPP
